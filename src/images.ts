@@ -19,6 +19,7 @@ const SQUIRREL_VARIANTS = [
 const CANVAS_WIDTH = 350;
 const CANVAS_HEIGHT = 185;
 const SQUIRREL_HEIGHT = Math.round(CANVAS_HEIGHT * 0.5);
+const SQUIRREL_TOP_MARGIN = 5;
 
 export function defaultResponse(): Buffer {
   return defaultImg;
@@ -49,6 +50,9 @@ export async function generateImg(name: string): Promise<Buffer> {
 
   const squirrelSource = SQUIRREL_VARIANTS[Math.floor(Math.random() * SQUIRREL_VARIANTS.length)];
   const { data: squirrelBuf, info: squirrelInfo } = await sharp(squirrelSource)
+    // Source PNGs carry inconsistent transparent padding above the art itself,
+    // so trim it before sizing or the overlay floats away from the top edge
+    .trim()
     .resize({ height: SQUIRREL_HEIGHT })
     .png()
     .toBuffer({ resolveWithObject: true });
@@ -58,7 +62,7 @@ export async function generateImg(name: string): Promise<Buffer> {
       {
         input: squirrelBuf,
         left: Math.round((CANVAS_WIDTH - squirrelInfo.width) / 2),
-        top: 0,
+        top: SQUIRREL_TOP_MARGIN,
       },
     ])
     .png()
