@@ -28,8 +28,8 @@ function setCached(key: string, buffer: Buffer): void {
 
 async function handleRequest(name: string): Promise<Buffer | undefined> {
   try {
-    // /viiw/ and /vitw/
-    if (/^\/vi[it]w\/[A-Za-z0-9_-]*$/.test(name)) {
+    // /gifs/{slug} - matches Klipy's real GIF page path
+    if (/^\/gifs\/[A-Za-z0-9_-]+$/.test(name)) {
       return await generateImg(name);
     }
   } catch (e) {
@@ -50,9 +50,8 @@ app.get(/.*/, async (req, res) => {
 
   // Filter the name so unicode paths don't error
   let filteredName = req.path.replace(/[^./A-Za-z0-9_-]+/g, "");
-  // Filter out languages in URL and handle edge-case for english double sit
-  filteredName = filteredName.replace(/^\/xn-\.\.\/vi[it]w/, "/vitw");
-  filteredName = filteredName.replace(/^\/[A-Za-z-]*\/vi/, "/vi");
+  // Filter out language prefixes some clients prepend (e.g. /en/gifs/...)
+  filteredName = filteredName.replace(/^\/[A-Za-z-]*\/gifs/, "/gifs");
 
   const cached = getCached(filteredName);
   if (cached) {

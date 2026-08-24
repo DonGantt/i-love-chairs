@@ -59,8 +59,7 @@ export async function generateImg(name: string): Promise<Buffer> {
     .toFormat("png")
     .toBuffer();
 
-  const doubleSit = name[3] === "t";
-  const squirrelWidth = Math.round(CANVAS_WIDTH * (doubleSit ? 0.75 : 0.45));
+  const squirrelWidth = Math.round(CANVAS_WIDTH * 0.45);
 
   const squirrelSource = SQUIRREL_VARIANTS[Math.floor(Math.random() * SQUIRREL_VARIANTS.length)];
   const { data: squirrelBuf, info: squirrelInfo } = await sharp(squirrelSource)
