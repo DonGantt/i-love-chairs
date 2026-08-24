@@ -36,7 +36,7 @@ server {
 
         # Request from anyone else
         if ($http_user_agent !~* "(Intel Mac OS X 11.6; rv:92.0|Discord)") {
-            return 301 https://www.youtube.com/watch?v=km8CR-fdB7o;
+            return 301 https://www.youtube.com/watch?v=ue5NOJpPcO8;
         }
     }
     listen 443 ssl;

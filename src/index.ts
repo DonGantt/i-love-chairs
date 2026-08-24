@@ -7,7 +7,7 @@ const PORT = Number(process.env.PORT) || 8000;
 
 // Matches the same set of embed-fetching agents nginx used to gate on
 const EMBED_USER_AGENT = /(Intel Mac OS X 11\.6; rv:92\.0|Discord)/i;
-const NON_EMBED_REDIRECT = "https://www.youtube.com/watch?v=km8CR-fdB7o";
+const NON_EMBED_REDIRECT = "https://www.youtube.com/watch?v=ue5NOJpPcO8";
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const responseCache = new Map<string, { buffer: Buffer; expiresAt: number }>();
