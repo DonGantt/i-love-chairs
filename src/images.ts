@@ -23,20 +23,33 @@ export function defaultResponse(): Buffer {
   return defaultImg;
 }
 
-interface KlipyGifResponse {
-  result: boolean;
-  data?: { file?: { md?: { gif?: { url?: string } } } };
-}
-
-export async function generateImg(name: string): Promise<Buffer> {
-  const slug = name.slice(6);
-  const lookup = await fetch(`https://api.klipy.co/api/v1/gifs/${slug}`, {
+async function findTenorViewPath(query: string): Promise<string> {
+  const r = await fetch(`https://tenor.com/search/${query}-gifs`, {
     headers: USER_AGENT_HEADERS,
     signal: AbortSignal.timeout(3000),
   });
-  const lookupData = (await lookup.json()) as KlipyGifResponse;
-  const imgUrl = lookupData.data?.file?.md?.gif?.url;
-  if (!lookupData.result || !imgUrl) throw new Error("could not find klipy image url");
+  const html = await r.text();
+  const match = html.match(/href="(\/view\/[A-Za-z0-9-]+)"/);
+  if (!match) throw new Error("no tenor search results for query");
+  return match[1];
+}
+
+async function scrapeTenorImageUrl(viewPath: string): Promise<string> {
+  const r = await fetch(`https://tenor.com${viewPath}`, {
+    headers: USER_AGENT_HEADERS,
+    signal: AbortSignal.timeout(3000),
+  });
+  const html = await r.text();
+  const match = html.match(/<meta class="dynamic" name="twitter:image" content="([^"]*)">/);
+  if (!match) throw new Error("could not find tenor image url");
+  return match[1];
+}
+
+export async function generateImg(name: string): Promise<Buffer> {
+  // Klipy slugs end in a disambiguating index (e.g. "-19") that isn't part of the title
+  const query = name.slice(6).replace(/-\d+$/, "");
+  const viewPath = await findTenorViewPath(query);
+  const imgUrl = await scrapeTenorImageUrl(viewPath);
   const imgResp = await fetch(imgUrl, { headers: USER_AGENT_HEADERS, signal: AbortSignal.timeout(3000) });
   const rawGif = Buffer.from(await imgResp.arrayBuffer());
 
