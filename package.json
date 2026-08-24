@@ -1,0 +1,25 @@
+{
+  "name": "kltpy-server",
+  "version": "1.0.0",
+  "description": "Server software running on kltpy.com for the Discord s/i/t \"hack\".",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "sharp": "^0.33.4"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.14.2",
+    "tsx": "^4.15.7",
+    "typescript": "^5.5.2"
+  }
+}
