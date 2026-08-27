@@ -7,19 +7,27 @@ const USER_AGENT_HEADERS = {
 
 const defaultImg = readFileSync("img/sit_default.png");
 
-const SQUIRREL_VARIANTS = [
-  "angry_squirrel.png",
-  "angry_squirrel_hat.png",
-  "angry_squirrel_hat_coat.png",
-  "angry_squirrel_mask.png",
-  "angry_squirrel_mask_n_hat.png",
-  "angry_squirrel_mask_n_hat_n_coat.png",
-].map((file) => readFileSync(`img/${file}`));
+// img/sitting.png: a photo (top) stacked directly on a flat (0,255,0) "screen"
+// block (bottom), both cropped from the same left/right edges. Measured once
+// against the actual asset - see the bbox scan this was derived from.
+const SITTING_CONTENT = { left: 72, top: 54, width: 1869, height: 2751 };
+const SITTING_SCREEN = { left: 0, top: 1131, width: 1869, height: 1620 }; // relative to SITTING_CONTENT
+const OUTPUT_WIDTH = 400;
+const OUTPUT_HEIGHT = Math.round(SITTING_CONTENT.height * (OUTPUT_WIDTH / SITTING_CONTENT.width));
 
-const CANVAS_WIDTH = 350;
-const CANVAS_HEIGHT = 185;
-const SQUIRREL_HEIGHT = Math.round(CANVAS_HEIGHT * 0.5);
-const SQUIRREL_TOP_MARGIN = 5;
+async function keyOutGreenScreen(buf: Buffer): Promise<Buffer> {
+  const { data, info } = await sharp(buf).raw().ensureAlpha().toBuffer({ resolveWithObject: true });
+  const { width, height, channels } = info;
+  for (let i = 0; i < data.length; i += channels) {
+    const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
+    if (a === 255 && g > 200 && r < 60 && b < 60) data[i + 3] = 0;
+  }
+  return sharp(data, { raw: { width, height, channels } }).png().toBuffer();
+}
+
+const sittingTemplate = await keyOutGreenScreen(
+  await sharp("img/sitting.png").extract(SITTING_CONTENT).png().toBuffer(),
+);
 
 export function defaultResponse(): Buffer {
   return defaultImg;
@@ -42,29 +50,25 @@ export async function generateImg(name: string): Promise<Buffer> {
   const imgResp = await fetch(imgUrl, { headers: USER_AGENT_HEADERS, signal: AbortSignal.timeout(3000) });
   const rawGif = Buffer.from(await imgResp.arrayBuffer());
 
-  const canvas = await sharp(rawGif)
-    .resize(CANVAS_WIDTH, CANVAS_HEIGHT)
-    .ensureAlpha()
-    .toFormat("png")
+  const gifCover = await sharp(rawGif)
+    .resize(SITTING_SCREEN.width, SITTING_SCREEN.height, { fit: "cover" })
+    .png()
     .toBuffer();
 
-  const squirrelSource = SQUIRREL_VARIANTS[Math.floor(Math.random() * SQUIRREL_VARIANTS.length)];
-  const { data: squirrelBuf, info: squirrelInfo } = await sharp(squirrelSource)
-    // Source PNGs carry inconsistent transparent padding above the art itself,
-    // so trim it before sizing or the overlay floats away from the top edge
-    .trim()
-    .resize({ height: SQUIRREL_HEIGHT })
-    .png()
-    .toBuffer({ resolveWithObject: true });
-
-  return sharp(canvas)
+  const composed = await sharp({
+    create: {
+      width: SITTING_CONTENT.width,
+      height: SITTING_CONTENT.height,
+      channels: 4,
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+    },
+  })
     .composite([
-      {
-        input: squirrelBuf,
-        left: Math.round((CANVAS_WIDTH - squirrelInfo.width) / 2),
-        top: SQUIRREL_TOP_MARGIN,
-      },
+      { input: gifCover, left: SITTING_SCREEN.left, top: SITTING_SCREEN.top },
+      { input: sittingTemplate, left: 0, top: 0 },
     ])
     .png()
     .toBuffer();
+
+  return sharp(composed).resize(OUTPUT_WIDTH, OUTPUT_HEIGHT).png().toBuffer();
 }
