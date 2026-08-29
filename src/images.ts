@@ -12,6 +12,7 @@ const defaultImg = readFileSync("img/sit_default.png");
 // against the actual asset - see the bbox scan this was derived from.
 const SITTING_CONTENT = { left: 72, top: 54, width: 1869, height: 2751 };
 const SITTING_SCREEN = { left: 0, top: 1131, width: 1869, height: 1620 }; // relative to SITTING_CONTENT
+const SITTING_SCREEN_ASPECT = SITTING_SCREEN.width / SITTING_SCREEN.height;
 const OUTPUT_WIDTH = 400;
 const OUTPUT_HEIGHT = Math.round(SITTING_CONTENT.height * (OUTPUT_WIDTH / SITTING_CONTENT.width));
 
@@ -50,8 +51,13 @@ export async function generateImg(name: string): Promise<Buffer> {
   const imgResp = await fetch(imgUrl, { headers: USER_AGENT_HEADERS, signal: AbortSignal.timeout(3000) });
   const rawGif = Buffer.from(await imgResp.arrayBuffer());
 
+  const { width: gifWidth, height: gifHeight } = await sharp(rawGif).metadata();
+  // Wider-than-the-screen sources get top-anchored (meme captions/faces are usually
+  // up top); narrower/portrait sources look fine center-cropped
+  const position = gifWidth! / gifHeight! >= SITTING_SCREEN_ASPECT ? "top" : "centre";
+
   const gifCover = await sharp(rawGif)
-    .resize(SITTING_SCREEN.width, SITTING_SCREEN.height, { fit: "cover" })
+    .resize(SITTING_SCREEN.width, SITTING_SCREEN.height, { fit: "cover", position })
     .png()
     .toBuffer();
 
