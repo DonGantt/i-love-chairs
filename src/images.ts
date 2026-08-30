@@ -53,11 +53,16 @@ export async function generateImg(name: string): Promise<Buffer> {
 
   const { width: gifWidth, height: gifHeight } = await sharp(rawGif).metadata();
   // Wider-than-the-screen sources get top-anchored (meme captions/faces are usually
-  // up top); narrower/portrait sources look fine center-cropped
+  // up top); narrower/portrait sources look fine centered. Either way the full
+  // frame stays visible (contain), letterboxed rather than cropped.
   const position = gifWidth! / gifHeight! >= SITTING_SCREEN_ASPECT ? "top" : "centre";
 
-  const gifCover = await sharp(rawGif)
-    .resize(SITTING_SCREEN.width, SITTING_SCREEN.height, { fit: "cover", position })
+  const gifFit = await sharp(rawGif)
+    .resize(SITTING_SCREEN.width, SITTING_SCREEN.height, {
+      fit: "contain",
+      position,
+      background: { r: 0, g: 0, b: 0, alpha: 1 },
+    })
     .png()
     .toBuffer();
 
@@ -70,7 +75,7 @@ export async function generateImg(name: string): Promise<Buffer> {
     },
   })
     .composite([
-      { input: gifCover, left: SITTING_SCREEN.left, top: SITTING_SCREEN.top },
+      { input: gifFit, left: SITTING_SCREEN.left, top: SITTING_SCREEN.top },
       { input: sittingTemplate, left: 0, top: 0 },
     ])
     .png()
