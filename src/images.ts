@@ -7,14 +7,16 @@ const USER_AGENT_HEADERS = {
 
 const defaultImg = readFileSync("img/sit_default.png");
 
-// img/sitting.png: a photo (top) stacked directly on a flat (0,255,0) "screen"
-// block (bottom), both cropped from the same left/right edges. Measured once
-// against the actual asset - see the bbox scan this was derived from.
-const SITTING_CONTENT = { left: 72, top: 54, width: 1869, height: 2751 };
-const SITTING_SCREEN = { left: 0, top: 1131, width: 1869, height: 1620 }; // relative to SITTING_CONTENT
+// Both templates share the same canvas size and the same flat (0,255,0)
+// "screen" block position/size - only the caption text baked into the photo
+// differs. Measured once against the actual assets.
+const SITTING_CANVAS = { width: 1682, height: 3214 };
+const SITTING_SCREEN = { left: 0, top: 1632, width: 1682, height: 1582 };
 const SITTING_SCREEN_ASPECT = SITTING_SCREEN.width / SITTING_SCREEN.height;
 const OUTPUT_WIDTH = 400;
-const OUTPUT_HEIGHT = Math.round(SITTING_CONTENT.height * (OUTPUT_WIDTH / SITTING_CONTENT.width));
+const OUTPUT_HEIGHT = Math.round(SITTING_CANVAS.height * (OUTPUT_WIDTH / SITTING_CANVAS.width));
+
+const TEMPLATE_FILES = ["img/sitting_new.png", "img/sitting_second.png"];
 
 async function keyOutGreenScreen(buf: Buffer): Promise<Buffer> {
   const { data, info } = await sharp(buf).raw().ensureAlpha().toBuffer({ resolveWithObject: true });
@@ -26,8 +28,8 @@ async function keyOutGreenScreen(buf: Buffer): Promise<Buffer> {
   return sharp(data, { raw: { width, height, channels } }).png().toBuffer();
 }
 
-const sittingTemplate = await keyOutGreenScreen(
-  await sharp("img/sitting.png").extract(SITTING_CONTENT).png().toBuffer(),
+const sittingTemplates = await Promise.all(
+  TEMPLATE_FILES.map((file) => keyOutGreenScreen(readFileSync(file))),
 );
 
 export function defaultResponse(): Buffer {
@@ -61,15 +63,17 @@ export async function generateImg(name: string): Promise<Buffer> {
     .resize(SITTING_SCREEN.width, SITTING_SCREEN.height, {
       fit: "contain",
       position,
-      background: { r: 0, g: 0, b: 0, alpha: 1 },
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
     })
     .png()
     .toBuffer();
 
+  const sittingTemplate = sittingTemplates[Math.floor(Math.random() * sittingTemplates.length)];
+
   const composed = await sharp({
     create: {
-      width: SITTING_CONTENT.width,
-      height: SITTING_CONTENT.height,
+      width: SITTING_CANVAS.width,
+      height: SITTING_CANVAS.height,
       channels: 4,
       background: { r: 0, g: 0, b: 0, alpha: 0 },
     },
