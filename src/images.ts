@@ -16,7 +16,7 @@ const SITTING_SCREEN_ASPECT = SITTING_SCREEN.width / SITTING_SCREEN.height;
 const OUTPUT_WIDTH = 400;
 const OUTPUT_HEIGHT = Math.round(SITTING_CANVAS.height * (OUTPUT_WIDTH / SITTING_CANVAS.width));
 
-const TEMPLATE_FILES = ["img/sitting_new.png", "img/sitting_second.png"];
+export type SitVariant = "single" | "double";
 
 async function keyOutGreenScreen(buf: Buffer): Promise<Buffer> {
   const { data, info } = await sharp(buf).raw().ensureAlpha().toBuffer({ resolveWithObject: true });
@@ -28,9 +28,8 @@ async function keyOutGreenScreen(buf: Buffer): Promise<Buffer> {
   return sharp(data, { raw: { width, height, channels } }).png().toBuffer();
 }
 
-const sittingTemplates = await Promise.all(
-  TEMPLATE_FILES.map((file) => keyOutGreenScreen(readFileSync(file))),
-);
+const singleTemplate = await keyOutGreenScreen(readFileSync("img/sitting_new.png"));
+const doubleTemplate = await keyOutGreenScreen(readFileSync("img/sitting_second.png"));
 
 export function defaultResponse(): Buffer {
   return defaultImg;
@@ -41,8 +40,7 @@ interface KlipyGifResponse {
   data?: { file?: { md?: { gif?: { url?: string } } } };
 }
 
-export async function generateImg(name: string): Promise<Buffer> {
-  const slug = name.slice(6);
+export async function generateImg(slug: string, variant: SitVariant): Promise<Buffer> {
   const lookup = await fetch(`https://api.klipy.co/api/v1/gifs/${slug}`, {
     headers: USER_AGENT_HEADERS,
     signal: AbortSignal.timeout(3000),
@@ -68,7 +66,7 @@ export async function generateImg(name: string): Promise<Buffer> {
     .png()
     .toBuffer();
 
-  const sittingTemplate = sittingTemplates[Math.floor(Math.random() * sittingTemplates.length)];
+  const sittingTemplate = variant === "double" ? doubleTemplate : singleTemplate;
 
   const composed = await sharp({
     create: {

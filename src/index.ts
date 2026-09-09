@@ -1,5 +1,5 @@
 import express from "express";
-import { defaultResponse, generateImg } from "./images.js";
+import { defaultResponse, generateImg, type SitVariant } from "./images.js";
 
 const app = express();
 const HOST = "0.0.0.0";
@@ -26,11 +26,18 @@ function setCached(key: string, buffer: Buffer): void {
   responseCache.set(key, { buffer, expiresAt: Date.now() + CACHE_TTL_MS });
 }
 
+// /gifs/{slug} matches Klipy's real GIF page path; /gtfs/{slug} - "gif" with the
+// "i" swapped for "t" - is the "double sit" variant, mirroring the sit/double-sit
+// s/i/t letter-swap convention this app already uses elsewhere
+const SIT_PATH = /^\/(gifs|gtfs)\/([A-Za-z0-9_-]+)$/;
+
 async function handleRequest(name: string): Promise<Buffer | undefined> {
   try {
-    // /gifs/{slug} - matches Klipy's real GIF page path
-    if (/^\/gifs\/[A-Za-z0-9_-]+$/.test(name)) {
-      return await generateImg(name);
+    const match = SIT_PATH.exec(name);
+    if (match) {
+      const [, prefix, slug] = match;
+      const variant: SitVariant = prefix === "gtfs" ? "double" : "single";
+      return await generateImg(slug, variant);
     }
   } catch (e) {
     // We catch errors because we want to show the default image instead of an error page
@@ -51,7 +58,7 @@ app.get(/.*/, async (req, res) => {
   // Filter the name so unicode paths don't error
   let filteredName = req.path.replace(/[^./A-Za-z0-9_-]+/g, "");
   // Filter out language prefixes some clients prepend (e.g. /en/gifs/...)
-  filteredName = filteredName.replace(/^\/[A-Za-z-]*\/gifs/, "/gifs");
+  filteredName = filteredName.replace(/^\/[A-Za-z-]*\/(gifs|gtfs)/, "/$1");
 
   const cached = getCached(filteredName);
   if (cached) {
