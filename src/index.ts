@@ -66,9 +66,14 @@ app.get(/.*/, async (req, res) => {
     return;
   }
 
-  const image = (await handleRequest(filteredName)) ?? defaultResponse();
-  setCached(filteredName, image);
-  res.send(image);
+  const generated = await handleRequest(filteredName);
+  if (generated) {
+    setCached(filteredName, generated);
+    res.send(generated);
+    return;
+  }
+
+  res.send(defaultResponse());
 });
 
 app.listen(PORT, HOST, () => {

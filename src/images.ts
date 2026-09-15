@@ -5,7 +5,7 @@ const USER_AGENT_HEADERS = {
   "User-Agent": "A Discord Bot by an unknown person using github.com/rebane2001/kltpy-server",
 };
 
-const defaultImg = readFileSync("img/sit_default.png");
+const notFoundImgs = [readFileSync("img/notwork1.png"), readFileSync("img/notwork2.png")];
 
 // Both templates share the same canvas size and the same flat (0,255,0)
 // "screen" block position/size - only the caption text baked into the photo
@@ -32,7 +32,7 @@ const singleTemplate = await keyOutGreenScreen(readFileSync("img/sitting_new.png
 const doubleTemplate = await keyOutGreenScreen(readFileSync("img/sitting_second.png"));
 
 export function defaultResponse(): Buffer {
-  return defaultImg;
+  return notFoundImgs[Math.floor(Math.random() * notFoundImgs.length)];
 }
 
 interface KlipyGifResponse {
