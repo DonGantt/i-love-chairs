@@ -46,6 +46,12 @@ async function handleRequest(name: string): Promise<Buffer | undefined> {
   return undefined;
 }
 
+// Lets anyone (not just Discord's UA) preview the random 404/fallback art directly
+app.get("/test", (_req, res) => {
+  res.type("png");
+  res.send(defaultResponse());
+});
+
 app.get(/.*/, async (req, res) => {
   if (!EMBED_USER_AGENT.test(req.headers["user-agent"] ?? "")) {
     res.redirect(301, NON_EMBED_REDIRECT);
