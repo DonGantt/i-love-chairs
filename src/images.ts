@@ -85,3 +85,45 @@ export async function generateImg(slug: string, variant: SitVariant): Promise<Bu
 
   return sharp(composed).resize(OUTPUT_WIDTH, OUTPUT_HEIGHT).png().toBuffer();
 }
+
+// Arbitrary public animated GIF used purely to prototype keeping the source
+// animation alive (rather than flattening to the first frame) - swap for
+// anything, it's just a testing ground for /test-animate.
+const TEST_ANIMATE_GIF_URL = "https://media.giphy.com/media/3o7abKhOpu0NwenH3O/giphy.gif";
+
+export async function generateAnimatedTestImg(variant: SitVariant = "single"): Promise<Buffer> {
+  const gifResp = await fetch(TEST_ANIMATE_GIF_URL, {
+    headers: USER_AGENT_HEADERS,
+    signal: AbortSignal.timeout(5000),
+  });
+  const rawGif = Buffer.from(await gifResp.arrayBuffer());
+
+  const meta = await sharp(rawGif, { animated: true }).metadata();
+  const frameWidth = meta.width!;
+  const frameHeight = meta.pageHeight ?? meta.height!;
+  const position = frameWidth / frameHeight >= SITTING_SCREEN_ASPECT ? "top" : "centre";
+
+  const sittingTemplate = variant === "double" ? doubleTemplate : singleTemplate;
+
+  // Resize every frame into the screen box, then pad each frame out to the
+  // full canvas so the static sitting artwork can be composited on top once -
+  // sharp repeats a static overlay across every page of an animated base.
+  const composed = await sharp(rawGif, { animated: true })
+    .resize(SITTING_SCREEN.width, SITTING_SCREEN.height, {
+      fit: "contain",
+      position,
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+    })
+    .extend({
+      top: SITTING_SCREEN.top,
+      bottom: SITTING_CANVAS.height - SITTING_SCREEN.top - SITTING_SCREEN.height,
+      left: SITTING_SCREEN.left,
+      right: SITTING_CANVAS.width - SITTING_SCREEN.left - SITTING_SCREEN.width,
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+    })
+    .composite([{ input: sittingTemplate, left: 0, top: 0 }])
+    .gif()
+    .toBuffer();
+
+  return sharp(composed, { animated: true }).resize(OUTPUT_WIDTH, OUTPUT_HEIGHT).gif().toBuffer();
+}

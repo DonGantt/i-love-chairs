@@ -1,5 +1,5 @@
 import express from "express";
-import { defaultResponse, generateImg, type SitVariant } from "./images.js";
+import { defaultResponse, generateAnimatedTestImg, generateImg, type SitVariant } from "./images.js";
 
 const app = express();
 const HOST = "0.0.0.0";
@@ -50,6 +50,19 @@ async function handleRequest(name: string): Promise<Buffer | undefined> {
 app.get("/test", (_req, res) => {
   res.type("png");
   res.send(defaultResponse());
+});
+
+// Prototype route: composites the sitting template onto a fixed test GIF
+// without flattening it to a single frame first, so the source keeps animating.
+app.get("/test-animate", async (_req, res) => {
+  try {
+    const image = await generateAnimatedTestImg();
+    res.type("gif");
+    res.send(image);
+  } catch (e) {
+    console.error(e);
+    res.status(500).send(`animate test failed: ${e instanceof Error ? e.message : e}`);
+  }
 });
 
 app.get(/.*/, async (req, res) => {
